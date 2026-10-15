@@ -1,0 +1,1764 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculadora Estrutural — Painel Solar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b2038;
+    --bg-2:#0f2947;
+    --panel:#123258;
+    --panel-2:#173c69;
+    --line:#4f83b8;
+    --line-dim:#20456e;
+    --paper:#eef1e8;
+    --paper-line:#c9cdbd;
+    --ink:#0b2038;
+    --accent:#dd8b3e;
+    --accent-2:#f0a75b;
+    --ok:#7fae7a;
+    --warn:#d9683e;
+    --white:#f5f3ec;
+    --muted:#8fb0d1;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--white);font-family:'Space Grotesk',sans-serif;}
+  body{min-height:100vh;}
+  ::selection{background:var(--accent);color:var(--ink);}
+
+  header.top{
+    display:flex;align-items:baseline;gap:14px;
+    padding:20px 28px 16px;
+    border-bottom:1px solid var(--line-dim,#20456e);
+    background:linear-gradient(180deg,var(--bg-2),var(--bg));
+  }
+  header.top h1{
+    font-size:20px;font-weight:600;margin:0;letter-spacing:.2px;
+  }
+  header.top .sub{
+    font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);
+  }
+  header.top .sun{
+    width:10px;height:10px;border-radius:50%;background:var(--accent);
+    box-shadow:0 0 12px 2px var(--accent-2);margin-right:2px;
+  }
+
+  .layout{
+    display:grid;
+    grid-template-columns: 300px 1fr 320px;
+    gap:0;
+    min-height:calc(100vh - 68px);
+  }
+  @media (max-width: 980px){
+    .layout{grid-template-columns:1fr;}
+    main.canvas-area{order:-1;}
+    .stage{min-height:60vh;}
+    aside{max-height:46vh;}
+    .view-toggle{flex-wrap:wrap;}
+    .hint{margin-left:0;flex-basis:100%;}
+  }
+
+  aside{
+    padding:20px;
+    background:var(--bg-2);
+    overflow-y:auto;
+  }
+  .panel-left{border-right:1px solid #1c3f66;}
+  .panel-right{border-left:1px solid #1c3f66;}
+
+  h2.section-title{
+    font-size:11px;text-transform:none;letter-spacing:.3px;
+    color:var(--accent-2);font-weight:600;margin:0 0 12px;
+    font-family:'IBM Plex Mono',monospace;
+    border-bottom:1px dashed #2a5580;padding-bottom:8px;
+  }
+  h2.section-title:not(:first-child){margin-top:22px;}
+
+  .field{margin-bottom:12px;}
+  .field label{
+    display:block;font-size:12px;color:var(--muted);margin-bottom:4px;
+  }
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  input[type=text], input[type=number], select{
+    width:100%;padding:8px 9px;border-radius:6px;
+    border:1px solid #26507e;background:#0e2846;color:var(--white);
+    font-family:'IBM Plex Mono',monospace;font-size:13px;
+  }
+  input:focus, select:focus{outline:2px solid var(--accent);outline-offset:1px;}
+
+  button{
+    font-family:'Space Grotesk',sans-serif;font-weight:500;font-size:13px;
+    border-radius:6px;border:1px solid #2a5580;background:#153a63;color:var(--white);
+    padding:8px 12px;cursor:pointer;transition:background .12s, transform .06s;
+  }
+  button:hover{background:#1c4a7d;}
+  button:active{transform:translateY(1px);}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#241305;font-weight:600;}
+  button.primary:hover{background:var(--accent-2);}
+  button.ghost{background:transparent;}
+  button.small{padding:4px 8px;font-size:12px;}
+  button.small.active{background:var(--accent);color:#241305;font-weight:600;}
+  button.danger{border-color:#7a3a2a;color:#f0b8a3;}
+  button.danger:hover{background:#3a1f16;}
+  button.icon{width:28px;height:28px;padding:0;display:inline-flex;align-items:center;justify-content:center;}
+
+  .section-card{
+    background:var(--panel);border:1px solid #234c78;border-radius:8px;
+    padding:12px;margin-bottom:12px;
+  }
+  .section-card.active{border-color:var(--accent);}
+  .section-card .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;cursor:pointer;}
+  .section-card .head .name{font-weight:600;font-size:13.5px;}
+  .section-card .head .meta{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);}
+
+  .row-editor{
+    display:flex;align-items:center;gap:6px;margin:6px 0;
+    background:#0e2846;border-radius:6px;padding:6px 8px;
+  }
+  .row-editor .lbl{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);width:52px;}
+  .row-editor .count{flex:1;text-align:center;font-family:'IBM Plex Mono',monospace;font-weight:600;}
+  .row-editor .stepper{display:flex;gap:4px;}
+
+  .canvas-area{
+    display:flex;flex-direction:column;background:var(--bg);
+  }
+  .view-toggle{
+    display:flex;align-items:center;gap:10px;padding:14px 20px;
+    border-bottom:1px solid #1c3f66;
+  }
+  .toggle-group{display:flex;background:#0e2846;border-radius:8px;padding:3px;border:1px solid #26507e;}
+  .toggle-group button{border:none;background:transparent;border-radius:6px;}
+  .toggle-group button.active{background:var(--accent);color:#241305;font-weight:600;}
+  .hint{font-size:11.5px;color:var(--muted);margin-left:auto;font-family:'IBM Plex Mono',monospace;}
+
+  .stage{flex:1;position:relative;overflow:hidden;}
+  #view2d, #view3d{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
+  #view3d{display:none;}
+  #view3d.active{display:flex;}
+  #view2d.hidden{display:none;}
+
+  svg#svg2d{width:100%;height:100%;cursor:default;}
+  .roof-bg{fill:var(--paper);stroke:#b9bfa9;stroke-width:1;}
+  .roof-grid line{stroke:var(--paper-line);stroke-width:.6;}
+  .rail-line{stroke:#a8d19a;stroke-width:4;stroke-linecap:round;filter:drop-shadow(0 0 1.5px rgba(0,0,0,.75));}
+  .panel-rect{fill:#183a63;stroke:#0a2036;stroke-width:1.4;rx:2;cursor:grab;}
+  .panel-rect:hover{fill:#204b7d;}
+  .panel-rect.dragging{fill:var(--accent);cursor:grabbing;}
+  .panel-cell-line{stroke:#4a6b96;stroke-width:.8;}
+  .clamp-dot{fill:#ffbb55;stroke:#241305;stroke-width:.6;}
+  .clamp-dot.final{fill:#ff6b52;stroke:#241305;stroke-width:.6;}
+  .splice-mark{stroke:#5eb6e8;stroke-width:6;stroke-linecap:round;filter:drop-shadow(0 0 1.5px rgba(0,0,0,.75));}
+  .mount-lead{stroke:#8a6a3a;stroke-width:1;}
+  .mount-plate{fill:#f0a75b;stroke:#241305;stroke-width:.5;}
+  .mount-screw{fill:#c9702e;stroke:#241305;stroke-width:.4;}
+  .section-label{fill:#3a4a3f;font-family:'IBM Plex Mono',monospace;font-size:11px;}
+  .dim-label{fill:#5a6a5a;font-family:'IBM Plex Mono',monospace;font-size:10px;}
+  .row-drop-target{fill:var(--accent);opacity:0;}
+  .row-drop-target.show{opacity:.12;}
+  .fit-outline{fill:none;stroke:#dd8b3e;stroke-width:2;stroke-dasharray:6 4;vector-effect:non-scaling-stroke;pointer-events:none;}
+  .fit-handle{fill:#dd8b3e;stroke:#241305;stroke-width:1.5;touch-action:none;}
+  .fit-handle:hover{fill:#f0a75b;}
+  .fit-handle.resize{fill:#5eb6e8;}
+  .fit-handle.resize:hover{fill:#8fd0f0;}
+  .fit-handle.rotate{fill:#7fae7a;}
+  .fit-handle.rotate:hover{fill:#9fcf98;}
+  .fit-handle-icon{fill:#241305;font-size:11px;text-anchor:middle;font-weight:700;}
+  .fit-rotate-line{stroke:#7fae7a;stroke-width:1.5;stroke-dasharray:3 3;vector-effect:non-scaling-stroke;pointer-events:none;}
+
+  .stage3d-wrap{width:100%;height:100%;perspective:1400px;display:flex;align-items:center;justify-content:center;cursor:grab;}
+  .stage3d-wrap.grabbing{cursor:grabbing;}
+  .scene3d{transform-style:preserve-3d;position:relative;transition:transform .05s linear;}
+  .roof3d{
+    position:absolute;transform-style:preserve-3d;
+    box-shadow:0 10px 40px rgba(0,0,0,.5), inset 0 0 30px rgba(0,0,0,.25);
+  }
+  .roof3d-colonial{
+    background:
+      repeating-linear-gradient(180deg, rgba(0,0,0,.16) 0 3px, rgba(255,255,255,.08) 3px 5px, transparent 5px 11px),
+      linear-gradient(100deg,#c97a4a,#a85c34 55%,#8f4b29);
+    border:2px solid #6b3a1e;
+  }
+  .roof3d-fibrocimento{
+    background:
+      repeating-linear-gradient(180deg, rgba(0,0,0,.2) 0 5px, rgba(255,255,255,.14) 5px 9px, transparent 9px 20px),
+      linear-gradient(100deg,#b7c0c5,#98a2a8 55%,#7d878d);
+    border:2px solid #576066;
+  }
+  .roof3d-laje{
+    background:linear-gradient(100deg,#c7cbcf,#aeb3b7 55%,#999fa3);
+    border:2px solid #5f666b;
+  }
+  .rafter3d{
+    position:absolute;background:linear-gradient(180deg,#c9a06a,#8a6238 55%,#6e4b28);
+    border:1px solid #4a3319;border-radius:1px;box-shadow:0 2px 4px rgba(0,0,0,.4);
+  }
+  .panel3d{
+    position:absolute;border:1px solid #cfd6dc;border-radius:2px;
+    background:
+      linear-gradient(120deg, rgba(255,255,255,.28) 0%, transparent 30%),
+      repeating-linear-gradient(90deg, transparent 0 calc(25% - 1px), rgba(255,255,255,.35) calc(25% - 1px) 25%),
+      repeating-linear-gradient(0deg, transparent 0 calc(33.33% - 1px), rgba(255,255,255,.35) calc(33.33% - 1px) 33.33%),
+      linear-gradient(160deg,#1d4a82,#0d2547);
+    box-shadow:0 3px 10px rgba(0,0,0,.45);
+  }
+  .rail3d{
+    position:absolute;border-radius:2px;
+    background:linear-gradient(180deg,#eef2f4,#b7c1c8 50%,#8b969d);
+    border:1px solid #5c666c;box-shadow:0 2px 3px rgba(0,0,0,.35);
+  }
+  .sectionlabel3d{
+    position:absolute;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#3a4a3f;
+    transform:translateZ(1px);
+  }
+
+  .controls3d{
+    position:absolute;bottom:18px;left:50%;transform:translateX(-50%);
+    display:flex;gap:6px;background:rgba(14,40,70,.85);backdrop-filter:blur(4px);
+    padding:8px;border-radius:10px;border:1px solid #26507e;
+  }
+
+  .bom-table{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:12.5px;}
+  .bom-table th{
+    text-align:left;font-weight:500;color:var(--muted);font-size:10.5px;
+    padding:6px 4px;border-bottom:1px solid #26507e;
+  }
+  .bom-table td{padding:7px 4px;border-bottom:1px solid #1c3f66;}
+  .bom-table td.qty{text-align:right;font-weight:600;color:var(--accent-2);}
+  .bom-table tr.total td{border-top:2px solid var(--accent);border-bottom:none;padding-top:10px;font-weight:700;}
+  .bom-table tr.total td.qty{color:var(--accent);font-size:14px;}
+
+  .swatch{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:7px;vertical-align:middle;}
+
+  .capacity-note{
+    font-size:11.5px;color:var(--muted);background:#0e2846;border-radius:6px;
+    padding:8px 10px;margin-top:10px;line-height:1.5;
+  }
+  .capacity-note b{color:var(--white);}
+  .capacity-note.warn{color:#f0b8a3;background:#2a180f;}
+
+  .footer-note{
+    font-size:10.5px;color:var(--muted);font-family:'IBM Plex Mono',monospace;
+    padding:14px 20px;border-top:1px solid #1c3f66;
+  }
+
+  ::-webkit-scrollbar{width:9px;}
+  ::-webkit-scrollbar-thumb{background:#26507e;border-radius:5px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <span class="sun"></span>
+  <h1>Calculadora Estrutural de Painel Solar</h1>
+  <span class="sub">trilho / parafuso / chapa L / emenda / grampo</span>
+</header>
+
+<div class="layout">
+
+  <!-- LEFT: inputs -->
+  <aside class="panel-left">
+    <h2 class="section-title">Placa</h2>
+    <div class="row2">
+      <div class="field">
+        <label>Largura (m)</label>
+        <input type="number" step="0.01" id="panelW" value="1.13">
+      </div>
+      <div class="field">
+        <label>Altura (m)</label>
+        <input type="number" step="0.01" id="panelH" value="2.28">
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>Tamanho do espaço entre colunas (m)</label>
+        <input type="number" step="0.005" min="0" id="gapX" value="0.02">
+      </div>
+      <div class="field">
+        <label>Espaço entre fileiras (m)</label>
+        <input type="number" step="0.01" min="0" id="gapY" value="0.15">
+      </div>
+    </div>
+    <div class="field">
+      <label>Espaço de colunas fica depois de quantas placas (0 = sem espaço, todas encostadas)</label>
+      <input type="number" step="1" min="0" id="gapXAfter" value="1">
+    </div>
+    <span class="hint" style="display:block;margin:-8px 0 12px;">na instalação real geralmente só existe UM espaço entre colunas (ex: depois da 1ª placa) — as demais ficam encostadas, como na foto de referência. O espaço entre fileiras continua igual entre todas.</span>
+    <div class="field">
+      <label>Afastamento da borda do telhado (m)</label>
+      <input type="number" step="0.01" min="0" id="edgeMargin" value="0.15">
+    </div>
+    <span class="hint" style="display:block;margin:-8px 0 12px;">as placas ficam recuadas essa distância dos 4 lados do telhado — não encostam na borda. Depois de mudar, clique em "Auto-preencher" na seção pra recalcular quantas placas cabem.</span>
+    <div class="field">
+      <label>Comprimento do trilho (m)</label>
+      <input type="number" step="0.05" id="railLen" value="2.40">
+    </div>
+    <div class="field">
+      <label>Imagem da placa (opcional)</label>
+      <input type="file" id="panelImgInput" accept="image/*" style="padding:6px;">
+      <div id="panelImgPreviewRow" class="row2" style="display:none;align-items:center;margin-top:6px;">
+        <img id="panelImgPreview" style="width:40px;height:40px;object-fit:cover;border-radius:4px;border:1px solid #2a3a2f;">
+        <button id="panelImgRemove" class="small" style="width:auto;">Remover imagem</button>
+      </div>
+    </div>
+
+    <h2 class="section-title">Telhados</h2>
+    <div id="sectionsList"></div>
+    <button id="addSectionBtn" style="width:100%;margin-top:4px;">+ Adicionar seção de telhado</button>
+  </aside>
+
+  <!-- CENTER: canvas -->
+  <main class="canvas-area">
+    <div class="view-toggle">
+      <div class="toggle-group">
+        <button id="btn2d" class="active">2D</button>
+        <button id="btn3d">3D</button>
+      </div>
+      <div id="opacityControl" style="display:none;align-items:center;gap:6px;margin-left:14px;">
+        <span class="hint" style="white-space:nowrap;">opacidade da estrutura</span>
+        <input type="range" id="overlayOpacity" min="30" max="100" value="100" style="width:90px;">
+        <button id="btnPreview" class="small" type="button" style="margin-left:8px;">Visualização limpa</button>
+      </div>
+      <span class="hint" id="stageHint">arraste uma placa para outra fileira para reorganizar</span>
+    </div>
+    <div class="stage">
+      <div id="view2d"><svg id="svg2d" viewBox="0 0 1000 600"></svg></div>
+      <div id="view3d">
+        <div class="stage3d-wrap" id="stage3dWrap">
+          <div class="scene3d" id="scene3d"></div>
+        </div>
+        <div class="controls3d">
+          <button class="icon" id="rotLeft" title="Girar esquerda">◀</button>
+          <button class="icon" id="rotUp" title="Girar para cima">▲</button>
+          <button class="icon" id="rotDown" title="Girar para baixo">▼</button>
+          <button class="icon" id="rotRight" title="Girar direita">▶</button>
+          <button class="icon" id="zoomOut3d" title="Diminuir zoom">−</button>
+          <button class="icon" id="zoomIn3d" title="Aumentar zoom">+</button>
+          <button class="small" id="rotReset">Reset</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- RIGHT: BOM -->
+  <aside class="panel-right">
+    <h2 class="section-title">Quantitativo total</h2>
+    <table class="bom-table" id="bomTable"></table>
+  </aside>
+
+</div>
+
+<div class="footer-note">Regra: trilhos = nº de placas da fileira (aproveitamento de corte topo+base) · parafuso = chapa L = 2×(pontos de apoio+1), topo e base · 2 intermediários por junção de placas · 2 emendas por junção de trilhos · 4 finais por fileira</div>
+
+<script>
+(function(){
+  // ---------- state ----------
+  let uidCounter = 1;
+  const uid = () => 's' + (uidCounter++);
+
+  const state = {
+    panel: { w: 1.13, h: 2.28, image: null, orientation: 'retrato' },
+    railLen: 2.40,
+    gapX: 0.02, // tamanho (m) do espaço entre colunas
+    gapY: 0.15, // espaço real (m) entre fileiras
+    gapXAfter: 1, // depois de quantas placas (na mesma fileira) entra o espaço; 0 = sem espaço
+    edgeMargin: 0.15, // afastamento (m) das placas em relação à borda do telhado, dos 4 lados
+    sections: [],
+    activeSectionId: null,
+    dragSectionId: null,
+    dragRowIdx: null,
+    dragPanelIdx: null,
+    overlayOpacity: 1,
+    previewMode: false,
+  };
+
+  function newSection(name, w, h){
+    const s = { id: uid(), name, w, h, rows: [], roofImage: null, roofImageRef: null, roofZoom: 1, orientation: 'retrato', packedRows: false, pitch: 0, ridgePos: w/2, roofType: 'colonial', overlay: {dx:0, dy:0, scale:1, rotation:0} };
+    autoFill(s);
+    return s;
+  }
+
+  // quantas peças de tamanho "size" cabem exatas num vão "total", respeitando
+  // um espaço real "gap" entre elas (o espaço só existe ENTRE peças, nunca
+  // nas duas pontas) e um afastamento "margin" da borda em cada um dos dois
+  // lados (esse sim tira área útil, igual à instalação real) — fórmula
+  // padrão de encaixe: n = floor((útil+gap)/(size+gap))
+  // usado só para FILEIRAS (espaço igual entre todas)
+  function fitCount(total, size, gap, margin){
+    if(size<=0) return 0;
+    const usable = Math.max(0, total - 2*(margin||0));
+    return Math.max(0, Math.floor((usable + gap) / (size + gap)));
+  }
+
+  // Encaixe de COLUNAS (lado a lado, na mesma fileira): na instalação real só
+  // existe UM espaço, sempre no mesmo lugar (ex: depois da 1ª placa, como numa
+  // foto de referência) — as demais placas ficam encostadas, sem espaço entre
+  // elas. "afterCol" = depois de quantas placas entra esse espaço (0 = nenhum
+  // espaço, todas as colunas encostadas). "margin" tira o afastamento da
+  // borda dos dois lados, igual fitCount.
+  function widthForCols(n, size, gap, afterCol){
+    if(n<=0) return 0;
+    return n*size + ((afterCol>0 && n>afterCol) ? gap : 0);
+  }
+  function fitCols(total, size, gap, afterCol, margin){
+    if(size<=0) return 0;
+    const usable = Math.max(0, total - 2*(margin||0));
+    let n=0;
+    while(widthForCols(n+1, size, gap, afterCol) <= usable + 1e-9){ n++; if(n>2000) break; }
+    return n;
+  }
+  // posição x (borda esquerda) da coluna i (0-based), já incluindo o espaço
+  // único se essa coluna estiver depois dele
+  function colOffset(i, size, gap, afterCol){
+    return i*size + ((afterCol>0 && i>=afterCol) ? gap : 0);
+  }
+
+  function autoFill(s){
+    const dims = effPanelDims(s);
+    const perRow = Math.max(1, fitCols(s.w, dims.w, state.gapX, state.gapXAfter, state.edgeMargin));
+    const rows = Math.max(1, fitCount(s.h, dims.h, state.gapY, state.edgeMargin));
+    s.rows = [];
+    for(let i=0;i<rows;i++) s.rows.push(perRow);
+  }
+
+  // physical width/height of the panel as actually mounted on this specific
+  // roof section — swapped when that section's orientation is "paisagem"
+  // (landscape/horizontal); each telhado can be set independently
+  function effPanelDims(s){
+    const orientation = (s && s.orientation) || 'retrato';
+    return orientation === 'paisagem'
+      ? { w: state.panel.h, h: state.panel.w }
+      : { w: state.panel.w, h: state.panel.h };
+  }
+
+  state.sections.push(newSection('Telhado A', 10.7, 2.6));
+  state.activeSectionId = state.sections[0].id;
+
+  // ---------- BOM math ----------
+  function rowBOM(n, panelsPerPiece){
+    if(n <= 0) return {rails:0, parafuso:0, chapaL:0, emenda:0, intermediario:0, final:0};
+    const ppp = Math.max(1, panelsPerPiece||2);
+    const R = Math.ceil(n/ppp);
+    const rails = n;
+    const parafuso = 2*(R+1);
+    const chapaL = parafuso;
+    const emenda = R>1 ? 2*(R-1) : 0;
+    const intermediario = n>1 ? 2*(n-1) : 0;
+    const final = 4;
+    return {rails, parafuso, chapaL, emenda, intermediario, final};
+  }
+
+  // BOM da seção inteira em modo Paisagem: aqui o trilho não é "por fileira"
+  // (como no Retrato), ele sobe/desce por coluna cruzando várias fileiras
+  // empilhadas — então precisa contar por coluna, espelhando exatamente a
+  // mesma lógica de agrupamento usada no desenho 2D (ver drawStructure)
+  function paisagemSectionBOM(s, panelsPerPiece){
+    const rows = s.rows;
+    const ppp = Math.max(1, panelsPerPiece||2);
+    const rails = rows.reduce((a,n)=>a+n,0);
+    if(rails===0) return {rails:0, parafuso:0, chapaL:0, emenda:0, intermediario:0, final:0};
+    const groups = [];
+    for(let rp=0; rp<rows.length; rp+=ppp){
+      const g = [];
+      for(let k=0;k<ppp && rp+k<rows.length;k++) g.push(rp+k);
+      groups.push(g);
+    }
+    const maxCols = rows.length ? Math.max(...rows) : 0;
+    let final=0, emenda=0, parafuso=0, intermediario=0;
+    for(let i=0;i<maxCols;i++){
+      const activeGroups = groups.map(g=>g.filter(r=>i<rows[r])).filter(g=>g.length>0);
+      if(activeGroups.length===0) continue;
+      const Rcol = activeGroups.length;
+      final += 4;                    // 2 trilhos (esquerda/direita) × 2 pontas
+      emenda += 2*(Rcol-1);           // só entre peças, nunca dentro de uma peça só
+      parafuso += 2*(Rcol+1);         // início de cada peça + o final, × 2 trilhos
+      for(let r=1;r<rows.length;r++){
+        if(i<rows[r-1] && i<rows[r]) intermediario += 2; // grampo entre placas empilhadas
+      }
+    }
+    return {rails, parafuso, chapaL:parafuso, emenda, intermediario, final};
+  }
+
+  function totals(){
+    const t = {rails:0, parafuso:0, chapaL:0, emenda:0, intermediario:0, final:0, panels:0};
+    const ppp = Math.max(1, Math.floor(state.railLen / Math.min(state.panel.w, state.panel.h)));
+    state.sections.forEach(s => {
+      if((s.orientation||'retrato') === 'paisagem'){
+        const b = paisagemSectionBOM(s, ppp);
+        t.rails += b.rails; t.parafuso += b.parafuso; t.chapaL += b.chapaL;
+        t.emenda += b.emenda; t.intermediario += b.intermediario; t.final += b.final;
+        t.panels += s.rows.reduce((a,n)=>a+n,0);
+      } else {
+        s.rows.forEach(n => {
+          const b = rowBOM(n, ppp);
+          t.rails += b.rails; t.parafuso += b.parafuso; t.chapaL += b.chapaL;
+          t.emenda += b.emenda; t.intermediario += b.intermediario; t.final += b.final;
+          t.panels += n;
+        });
+      }
+    });
+    return t;
+  }
+
+  // ---------- left panel: sections list ----------
+  const sectionsListEl = document.getElementById('sectionsList');
+
+  function renderSectionsList(){
+    sectionsListEl.innerHTML = '';
+    state.sections.forEach(s => {
+      if(!s.overlay) s.overlay = {dx:0, dy:0, scale:1, rotation:0};
+      if(s.overlay.rotation===undefined) s.overlay.rotation = 0;
+      const card = document.createElement('div');
+      card.className = 'section-card' + (s.id===state.activeSectionId ? ' active' : '');
+
+      const head = document.createElement('div');
+      head.className = 'head';
+      head.innerHTML = `<span class="name">${s.name}</span><span class="meta">${s.w}×${s.h}m</span>`;
+      head.onclick = () => { state.activeSectionId = s.id; renderAll(); };
+      card.appendChild(head);
+
+      const dims = document.createElement('div');
+      dims.className = 'row2';
+      dims.innerHTML = `
+        <div class="field"><label>Largura (m)</label><input type="number" step="0.01" data-w value="${s.w}"></div>
+        <div class="field"><label>Altura (m)</label><input type="number" step="0.01" data-h value="${s.h}"></div>`;
+      dims.querySelector('[data-w]').onchange = e => { s.w = parseFloat(e.target.value)||s.w; renderAll(); };
+      dims.querySelector('[data-h]').onchange = e => { s.h = parseFloat(e.target.value)||s.h; renderAll(); };
+      card.appendChild(dims);
+
+      const orientField = document.createElement('div');
+      orientField.className = 'field';
+      orientField.innerHTML = `
+        <label>Orientação da placa</label>
+        <div class="toggle-group" style="width:100%;">
+          <button type="button" data-orient="retrato" class="${(s.orientation||'retrato')==='retrato'?'active':''}" style="flex:1;">Retrato</button>
+          <button type="button" data-orient="paisagem" class="${s.orientation==='paisagem'?'active':''}" style="flex:1;">Paisagem</button>
+        </div>
+        <label style="display:flex;align-items:center;gap:6px;margin-top:8px;cursor:pointer;">
+          <input type="checkbox" data-packed-rows ${s.packedRows?'checked':''} style="width:auto;">
+          <span>Fileiras bem coladas (quase sem espaço, tipo bloco). Desmarcado = espaço normal entre fileiras.</span>
+        </label>
+        <label style="margin-top:8px;">Inclinação do telhado (° — só reflete na aba 3D)</label>
+        <input type="number" step="1" min="0" max="60" data-pitch value="${s.pitch||0}">
+        <label style="margin-top:8px;">Centro da inclinação — cumeeira (m a partir da esquerda, só aba 3D)</label>
+        <input type="number" step="0.1" min="0" max="${s.w}" data-ridge value="${s.ridgePos!=null?s.ridgePos:s.w/2}">
+        <label style="margin-top:8px;">Tipo de telhado (só reflete na aba 3D)</label>
+        <select data-roof-type>
+          <option value="colonial" ${(s.roofType||'colonial')==='colonial'?'selected':''}>Telha colonial (barro)</option>
+          <option value="fibrocimento" ${s.roofType==='fibrocimento'?'selected':''}>Telha fibrocimento</option>
+          <option value="laje" ${s.roofType==='laje'?'selected':''}>Laje</option>
+        </select>`;
+      orientField.querySelector('[data-pitch]').onchange = e => { s.pitch = Math.max(0, Math.min(60, parseFloat(e.target.value)||0)); renderAll(); };
+      orientField.querySelector('[data-ridge]').onchange = e => { s.ridgePos = Math.max(0, Math.min(s.w, parseFloat(e.target.value)||0)); renderAll(); };
+      orientField.querySelector('[data-roof-type]').onchange = e => { s.roofType = e.target.value; renderAll(); };
+      orientField.querySelectorAll('[data-orient]').forEach(btn=>{
+        btn.onclick = () => { s.orientation = btn.dataset.orient; renderAll(); };
+      });
+      orientField.querySelector('[data-packed-rows]').onchange = e => { s.packedRows = e.target.checked; renderAll(); };
+      card.appendChild(orientField);
+
+      // comparativo retrato x paisagem, direto no card deste telhado
+      const capNote = document.createElement('div');
+      const capInfo = capacityInfo(s);
+      capNote.className = 'capacity-note' + (capInfo.over ? ' warn':'');
+      capNote.innerHTML = capInfo.html;
+      card.appendChild(capNote);
+
+      const roofImgField = document.createElement('div');
+      roofImgField.className = 'field';
+      // qualquer outra seção que NÃO seja ela mesma uma referencer pode
+      // servir de "telhado base" — com foto ou sem, não precisa ter
+      // imagem nenhuma pra outra seção se posicionar em cima dela
+      const otherAnchorSections = state.sections.filter(o => o.id!==s.id && !o.roofImageRef);
+      const usingRef = s.roofImageRef && otherAnchorSections.some(o=>o.id===s.roofImageRef);
+      let roofHtml = '';
+      if(otherAnchorSections.length){
+        roofHtml += `
+        <label>Telhado</label>
+        <select data-roof-source style="margin-bottom:6px;">
+          <option value="">Telhado próprio (foto opcional abaixo)</option>
+          ${otherAnchorSections.map(o=>`<option value="${o.id}" ${usingRef && s.roofImageRef===o.id?'selected':''}>Mesmo telhado de "${o.name}"${o.roofImage?' (com foto)':''}</option>`).join('')}
+        </select>`;
+      }
+      if(!usingRef){
+        roofHtml += `
+        <label>${otherAnchorSections.length?'Upload de foto própria (opcional)':'Foto do telhado (opcional)'}</label>
+        <input type="file" accept="image/*" data-roof-img style="padding:6px;">
+        <div class="row2" data-roof-preview-row style="display:${s.roofImage?'grid':'none'};align-items:center;margin-top:6px;">
+          <img data-roof-preview style="width:40px;height:40px;object-fit:cover;border-radius:4px;border:1px solid #2a3a2f;" src="${s.roofImage||''}">
+          <button class="small" data-roof-remove type="button">Remover foto</button>
+        </div>`;
+      } else {
+        const refTarget = otherAnchorSections.find(o=>o.id===s.roofImageRef);
+        roofHtml += refTarget && refTarget.roofImage
+          ? `<span class="hint" style="display:block;">usando o mesmo telhado de "${refTarget.name}" — arraste as alças coloridas no canvas pra encaixar esta estrutura na parte certa da foto</span>`
+          : `<span class="hint" style="display:block;">usando o mesmo telhado de "${refTarget?refTarget.name:''}" — arraste as alças coloridas no canvas pra posicionar esta estrutura</span>`;
+      }
+      roofImgField.innerHTML = roofHtml;
+
+      const sourceSelect = roofImgField.querySelector('[data-roof-source]');
+      if(sourceSelect){
+        sourceSelect.onchange = e => { s.roofImageRef = e.target.value || null; renderAll(); };
+      }
+      const roofFileInput = roofImgField.querySelector('[data-roof-img]');
+      if(roofFileInput){
+        roofFileInput.onchange = e => {
+          const file = e.target.files && e.target.files[0];
+          if(!file) return;
+          const reader = new FileReader();
+          reader.onload = ev => { s.roofImage = ev.target.result; renderAll(); };
+          reader.readAsDataURL(file);
+        };
+      }
+      const roofRemoveBtn = roofImgField.querySelector('[data-roof-remove]');
+      if(roofRemoveBtn){
+        roofRemoveBtn.onclick = () => { s.roofImage = null; s.roofZoom = 1; s.overlay = {dx:0,dy:0,scale:1,rotation:0}; renderAll(); };
+      }
+      if(s.roofImage && !usingRef){
+        const zoomField = document.createElement('div');
+        zoomField.className = 'field'; zoomField.style.marginTop = '6px';
+        zoomField.innerHTML = `
+          <label>Zoom da foto (100% = foto inteira, sem cortar)</label>
+          <input type="range" data-roof-zoom min="40" max="250" step="1" value="${Math.round((s.roofZoom||1)*100)}" style="width:100%;">`;
+        zoomField.querySelector('[data-roof-zoom]').oninput = e => { s.roofZoom = (parseFloat(e.target.value)||100)/100; render2D(); };
+        roofImgField.appendChild(zoomField);
+      }
+      {
+        const resetBtn = document.createElement('button');
+        resetBtn.className = 'small'; resetBtn.style.marginTop = '6px'; resetBtn.type = 'button';
+        resetBtn.textContent = 'Redefinir encaixe (posição/tamanho/rotação)';
+        resetBtn.onclick = () => { s.overlay = {dx:0,dy:0,scale:1,rotation:0}; if(!usingRef) s.roofZoom = 1; renderAll(); };
+        roofImgField.appendChild(resetBtn);
+
+        const fine = document.createElement('div');
+        fine.className = 'field'; fine.style.marginTop = '8px';
+        fine.innerHTML = `
+          <label>Ajuste fino (pra fechar bem os cantos/bordas)</label>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <span class="hint" style="width:52px;">posição</span>
+            <button type="button" class="small" data-nudge="up" title="mover pra cima">▲</button>
+            <button type="button" class="small" data-nudge="down" title="mover pra baixo">▼</button>
+            <button type="button" class="small" data-nudge="left" title="mover pra esquerda">◀</button>
+            <button type="button" class="small" data-nudge="right" title="mover pra direita">▶</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px;">
+            <span class="hint" style="width:52px;">tamanho</span>
+            <button type="button" class="small" data-nudge="scale-">−</button>
+            <span class="hint" data-scale-val style="min-width:38px;text-align:center;">${Math.round(s.overlay.scale*100)}%</span>
+            <button type="button" class="small" data-nudge="scale+">+</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px;">
+            <span class="hint" style="width:52px;">rotação</span>
+            <button type="button" class="small" data-nudge="rot-">↺</button>
+            <span class="hint" data-rot-val style="min-width:38px;text-align:center;">${Math.round(s.overlay.rotation)}°</span>
+            <button type="button" class="small" data-nudge="rot+">↻</button>
+          </div>`;
+        fine.querySelectorAll('[data-nudge]').forEach(btn => {
+          btn.onclick = () => {
+            const k = btn.dataset.nudge;
+            if(k==='left') s.overlay.dx -= 3;
+            if(k==='right') s.overlay.dx += 3;
+            if(k==='up') s.overlay.dy -= 3;
+            if(k==='down') s.overlay.dy += 3;
+            if(k==='scale-') s.overlay.scale = Math.max(0.3, s.overlay.scale - 0.01);
+            if(k==='scale+') s.overlay.scale = Math.min(3, s.overlay.scale + 0.01);
+            if(k==='rot-') s.overlay.rotation -= 0.5;
+            if(k==='rot+') s.overlay.rotation += 0.5;
+            fine.querySelector('[data-scale-val]').textContent = Math.round(s.overlay.scale*100)+'%';
+            fine.querySelector('[data-rot-val]').textContent = Math.round(s.overlay.rotation)+'°';
+            render2D();
+          };
+        });
+        roofImgField.appendChild(fine);
+      }
+      card.appendChild(roofImgField);
+
+      s.rows.forEach((count, idx) => {
+        const re = document.createElement('div');
+        re.className = 'row-editor';
+        re.innerHTML = `<span class="lbl">fileira ${idx+1}</span><span class="count">${count} placas</span>
+          <div class="stepper">
+            <button class="icon small" data-minus>−</button>
+            <button class="icon small" data-plus>+</button>
+            <button class="icon small" data-del title="remover fileira">✕</button>
+          </div>`;
+        re.querySelector('[data-minus]').onclick = () => { s.rows[idx] = Math.max(0, s.rows[idx]-1); renderAll(); };
+        re.querySelector('[data-plus]').onclick = () => { s.rows[idx] = s.rows[idx]+1; renderAll(); };
+        re.querySelector('[data-del]').onclick = () => { s.rows.splice(idx,1); renderAll(); };
+        card.appendChild(re);
+      });
+
+      const addRowBtn = document.createElement('button');
+      addRowBtn.className = 'small'; addRowBtn.style.marginTop='4px';
+      addRowBtn.textContent = '+ fileira';
+      addRowBtn.onclick = () => { s.rows.push(1); renderAll(); };
+      card.appendChild(addRowBtn);
+
+      const gridField = document.createElement('div');
+      gridField.className = 'field'; gridField.style.marginTop = '8px';
+      const suggestedCols = Math.max(1, fitCols(s.w, effPanelDims(s).w, state.gapX, state.gapXAfter, state.edgeMargin));
+      gridField.innerHTML = `
+        <label>Organizar em grade — placas lado a lado por fileira</label>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input type="number" min="1" step="1" data-grid-cols value="${suggestedCols}" style="width:70px;">
+          <button type="button" class="small" data-grid-apply>Aplicar</button>
+        </div>
+        <span class="hint">redistribui o total de placas já configurado em fileiras coladas desse tamanho, uma do lado da outra (útil na Paisagem, pra formar blocos como numa instalação real)</span>`;
+      gridField.querySelector('[data-grid-apply]').onclick = () => {
+        const n = Math.max(1, parseInt(gridField.querySelector('[data-grid-cols]').value) || 1);
+        const total = s.rows.reduce((a,x)=>a+x,0) || n;
+        const newRows = [];
+        let remaining = total;
+        while(remaining > 0){ newRows.push(Math.min(n, remaining)); remaining -= n; }
+        if(newRows.length===0) newRows.push(n);
+        s.rows = newRows;
+        s.packedRows = true;
+        renderAll();
+      };
+      card.appendChild(gridField);
+
+      const actions = document.createElement('div');
+      actions.style = 'display:flex;gap:6px;margin-top:8px;';
+      actions.innerHTML = `<button class="small" data-fill>Auto-preencher</button><button class="small danger" data-remove>Remover</button>`;
+      actions.querySelector('[data-fill]').onclick = () => { autoFill(s); renderAll(); };
+      actions.querySelector('[data-remove]').onclick = () => {
+        state.sections = state.sections.filter(x=>x.id!==s.id);
+        if(state.sections.length===0) state.sections.push(newSection('Telhado A', 8, 2.6));
+        state.activeSectionId = state.sections[0].id;
+        renderAll();
+      };
+      card.appendChild(actions);
+
+      sectionsListEl.appendChild(card);
+    });
+  }
+
+  document.getElementById('addSectionBtn').onclick = () => {
+    const n = state.sections.length + 1;
+    const s = newSection('Telhado ' + String.fromCharCode(64+n), 8, 2.6);
+    state.sections.push(s);
+    state.activeSectionId = s.id;
+    renderAll();
+  };
+
+  document.getElementById('panelW').onchange = e => { state.panel.w = parseFloat(e.target.value)||state.panel.w; renderAll(); };
+  document.getElementById('panelH').onchange = e => { state.panel.h = parseFloat(e.target.value)||state.panel.h; renderAll(); };
+  document.getElementById('gapX').onchange = e => { state.gapX = Math.max(0, parseFloat(e.target.value)); if(isNaN(state.gapX)) state.gapX=0; renderAll(); };
+  document.getElementById('gapY').onchange = e => { state.gapY = Math.max(0, parseFloat(e.target.value)); if(isNaN(state.gapY)) state.gapY=0; renderAll(); };
+  document.getElementById('gapXAfter').onchange = e => { state.gapXAfter = Math.max(0, Math.round(parseFloat(e.target.value))); if(isNaN(state.gapXAfter)) state.gapXAfter=0; renderAll(); };
+  document.getElementById('edgeMargin').onchange = e => { state.edgeMargin = Math.max(0, parseFloat(e.target.value)); if(isNaN(state.edgeMargin)) state.edgeMargin=0; renderAll(); };
+  document.getElementById('railLen').onchange = e => { state.railLen = parseFloat(e.target.value)||state.railLen; renderAll(); };
+
+  document.getElementById('overlayOpacity').oninput = e => { state.overlayOpacity = (parseFloat(e.target.value)||100)/100; render2D(); };
+  document.getElementById('btnPreview').onclick = e => {
+    state.previewMode = !state.previewMode;
+    e.target.classList.toggle('active', state.previewMode);
+    e.target.textContent = state.previewMode ? 'Voltar a editar' : 'Visualização limpa';
+    render2D();
+  };
+
+  // ---------- panel image upload ----------
+  const panelImgInput = document.getElementById('panelImgInput');
+  const panelImgPreviewRow = document.getElementById('panelImgPreviewRow');
+  const panelImgPreview = document.getElementById('panelImgPreview');
+  panelImgInput.onchange = e => {
+    const file = e.target.files && e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      state.panel.image = ev.target.result;
+      panelImgPreview.src = state.panel.image;
+      panelImgPreviewRow.style.display = 'grid';
+      renderAll();
+    };
+    reader.readAsDataURL(file);
+  };
+  document.getElementById('panelImgRemove').onclick = () => {
+    state.panel.image = null;
+    panelImgInput.value = '';
+    panelImgPreviewRow.style.display = 'none';
+    renderAll();
+  };
+
+  // ---------- capacity note ----------
+  function capacityFor(s, orientation){
+    const dims = orientation === 'paisagem'
+      ? { w: state.panel.h, h: state.panel.w }
+      : { w: state.panel.w, h: state.panel.h };
+    const perRow = fitCols(s.w, dims.w, state.gapX, state.gapXAfter, state.edgeMargin);
+    const maxRows = fitCount(s.h, dims.h, state.gapY, state.edgeMargin);
+    // largura/altura realmente ocupada pelo bloco de placas+espaços, pra achar a sobra exata
+    const usedW = widthForCols(perRow, dims.w, state.gapX, state.gapXAfter);
+    const usedH = maxRows>0 ? maxRows*dims.h + (maxRows-1)*state.gapY : 0;
+    const leftoverW = Math.max(0, s.w - usedW - 2*state.edgeMargin);
+    const leftoverH = Math.max(0, s.h - usedH - 2*state.edgeMargin);
+    return {perRow, maxRows, leftoverW, leftoverH, total: perRow*maxRows};
+  }
+  function capacityInfo(s){
+    const dims = effPanelDims(s);
+    const perRow = fitCols(s.w, dims.w, state.gapX, state.gapXAfter, state.edgeMargin);
+    const used = s.rows.reduce((a,n)=>a+n,0);
+    const over = s.rows.some(n => n > perRow);
+    const retrato = capacityFor(s, 'retrato');
+    const paisagem = capacityFor(s, 'paisagem');
+    const curOrient = s.orientation || 'retrato';
+    const cur = curOrient === 'paisagem' ? paisagem : retrato;
+    const gapDesc = state.gapXAfter>0
+      ? `espaço de ${state.gapX}m depois da placa nº${state.gapXAfter} de cada fileira, ${state.gapY}m entre fileiras, ${state.edgeMargin}m de afastamento da borda`
+      : `sem espaço entre colunas, ${state.gapY}m entre fileiras, ${state.edgeMargin}m de afastamento da borda`;
+    const html = `Com placa ${state.panel.w}m × ${state.panel.h}m (${gapDesc}) nesse telhado (${s.w}m × ${s.h}m):`
+      + `<br>&nbsp;&nbsp;Retrato${curOrient==='retrato'?' (atual)':''}: ${retrato.perRow} placas/fileira × ${retrato.maxRows} fileiras = ${retrato.total} placas`
+      + `<br>&nbsp;&nbsp;Paisagem${curOrient==='paisagem'?' (atual)':''}: ${paisagem.perRow} placas/fileira × ${paisagem.maxRows} fileiras = ${paisagem.total} placas`
+      + `<br>Configuradas: ${used} placas.`
+      + (cur.leftoverW > 0.02 ? `<br>sobra ~${cur.leftoverW.toFixed(2)}m de largura sem placa (na orientação atual).` : '')
+      + (cur.leftoverH > 0.02 ? `<br>sobra ~${cur.leftoverH.toFixed(2)}m de altura sem fileira (na orientação atual).` : '')
+      + (over ? '<br>⚠ uma fileira tem mais placas do que a largura do telhado comporta.' : '');
+    return {html, over};
+  }
+
+  // ---------- 2D render ----------
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  function el(tag, attrs){
+    const e = document.createElementNS(SVGNS, tag);
+    for(const k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+
+  // convert a screen (client) point into the svg2d's own user-space coordinates
+  function svgPoint(svg, clientX, clientY){
+    const ctm = svg.getScreenCTM();
+    if(!ctm) return {x:clientX, y:clientY};
+    const pt = svg.createSVGPoint();
+    pt.x = clientX; pt.y = clientY;
+    const p = pt.matrixTransform(ctm.inverse());
+    return {x:p.x, y:p.y};
+  }
+
+  // transform string that rotates/scales/moves around a fixed center point (cx,cy)
+  function overlayTransform(cx, cy, dx, dy, scale, rotation){
+    const rot = rotation || 0;
+    return `translate(${dx},${dy}) translate(${cx},${cy}) rotate(${rot}) scale(${scale}) translate(${-cx},${-cy})`;
+  }
+
+  function render2D(){
+    const svg = document.getElementById('svg2d');
+    svg.innerHTML = '';
+    const sections = state.sections;
+    if(sections.length===0) return;
+
+    // a section can either be its own "anchor" (with or without a photo),
+    // getting its own slot on the canvas — or reference another section's
+    // roof (com ou sem foto), em cujo caso é desenhada como uma estrutura
+    // flutuando em cima da área daquela âncora, em vez de ocupar espaço
+    // próprio.
+    function isReferencer(s){
+      return !!(s.roofImageRef && sections.some(t=>t.id===s.roofImageRef && !t.roofImageRef));
+    }
+    const anchors = sections.filter(s=>!isReferencer(s));
+    const referencers = sections.filter(isReferencer);
+
+    const PAD = 40, GAP = 60;
+    const scale = 46; // px per meter
+    let cursorX = PAD;
+    const maxH = Math.max(...sections.map(s=>s.h));
+    const totalW = anchors.reduce((a,s)=>a+s.w*scale+GAP, PAD);
+    const svgH = Math.max(400, maxH*scale + 140);
+    svg.setAttribute('viewBox', `0 0 ${totalW} ${svgH}`);
+    let clipCounter = 0;
+
+    const anyRoofImage = sections.some(s=>s.roofImage);
+    document.getElementById('opacityControl').style.display = anyRoofImage ? 'flex' : 'none';
+
+    const activeSec = sections.find(x=>x.id===state.activeSectionId);
+    if(document.getElementById('btn2d').classList.contains('active')){
+      document.getElementById('stageHint').textContent = activeSec
+        ? 'arraste uma placa para outra fileira · alças: laranja move, azul redimensiona, verde gira a estrutura'
+        : 'arraste uma placa para outra fileira para reorganizar';
+    }
+
+    // draws the rails/panels/clamps for one section into its own group, plus
+    // its fit handles when active. shared by anchor sections (their own slot)
+    // and referencer sections (floating over another section's photo).
+    function drawStructure(s, x0, y0, wpx, hpx, cx, cy, isActive, floatingLabel){
+      if(!s.overlay) s.overlay = {dx:0, dy:0, scale:1, rotation:0};
+      const overPhoto = !!(s.roofImage || floatingLabel);
+
+      const structureGroup = el('g', {});
+      structureGroup.setAttribute('transform', overlayTransform(cx, cy, s.overlay.dx, s.overlay.dy, s.overlay.scale, s.overlay.rotation));
+      if(overPhoto) structureGroup.setAttribute('opacity', state.overlayOpacity);
+      svg.appendChild(structureGroup);
+
+      if(floatingLabel && !state.previewMode){
+        const rot0 = s.overlay.rotation || 0, rad0 = rot0*Math.PI/180;
+        const lx = -Math.sin(rad0) * -(s.overlay.scale*(hpx/2)+14);
+        const ly = Math.cos(rad0) * -(s.overlay.scale*(hpx/2)+14);
+        const labelX = cx + s.overlay.dx + lx, labelY = cy + s.overlay.dy + ly;
+        const tag = el('text', {x:labelX, y:labelY, class:'section-label', 'text-anchor':'middle'});
+        tag.textContent = s.name;
+        svg.appendChild(tag);
+      }
+
+      const dims = effPanelDims(s);
+      const vertical = (s.orientation === 'paisagem');
+      const scalePxW = dims.w * scale, scalePxH = dims.h * scale; // true physical size in px
+      // trilho não fica rente à borda da placa — na instalação real ele passa
+      // por baixo, afastado de cada ponta (regra prática ~20% do comprimento
+      // da placa), e é essa posição "do meio" que vale, não a borda
+      const railInsetY = Math.max(18, Math.min(38, scalePxH*0.2));
+      const railInsetX = Math.max(18, Math.min(38, scalePxW*0.2));
+      // espaços agora vêm do valor real configurado (m) convertido pra px
+      // nessa mesma escala do telhado — assim o desenho bate exatamente com
+      // a conta de quantas placas cabem, em vez de usar um px fixo arbitrário
+      const PANEL_GAP = Math.max(1, state.gapX*scale);
+      // gap between fileiras: bem pequeno (quase colado) quando "fileiras
+      // coladas" está ligado, o espaço real configurado (gapY) caso contrário
+      // — placas sempre mantêm o tamanho físico real, nunca encolhem
+      const ROW_GAP = s.packedRows ? Math.max(1, state.gapX*scale) : Math.max(1, state.gapY*scale);
+      // afastamento da borda: as placas não começam grudadas na borda do
+      // telhado, ficam recuadas esse tanto dos 4 lados (valor real, m)
+      const marginPx = state.edgeMargin*scale;
+
+      const rowTops = [];
+      let cursorY = y0 + marginPx;
+      s.rows.forEach(()=>{ rowTops.push(cursorY); cursorY += scalePxH + ROW_GAP; });
+
+      s.rows.forEach((count, rIdx) => {
+        const rowHslot = scalePxH + ROW_GAP;
+        const ry0 = rowTops[rIdx];
+        const panelTop = rowTops[rIdx];
+        const railY_top = panelTop + railInsetY;
+        const railY_bot = panelTop + scalePxH - railInsetY;
+        const panelsPerPiece = Math.max(1, Math.floor(state.railLen / Math.min(state.panel.w, state.panel.h)));
+        const R = Math.ceil(count/panelsPerPiece);
+
+        // drop target zone (for drag)
+        const dz = el('rect', {x:x0, y:ry0, width:wpx, height:rowHslot, class:'row-drop-target'});
+        dz.dataset.section = s.id; dz.dataset.row = rIdx;
+        structureGroup.appendChild(dz);
+
+        // panels (drawn first so rails/emendas/grampos sit visibly on top of them)
+        const drawW = scalePxW, drawH = scalePxH;
+        for(let i=0;i<count;i++){
+        const drawX = x0 + marginPx + colOffset(i, drawW, PANEL_GAP, state.gapXAfter) + 2;
+          const drawY = panelTop;
+
+          const pr = el('rect', {x:drawX, y:drawY, width:drawW, height:drawH, class:'panel-rect'});
+          pr.dataset.section = s.id; pr.dataset.row = rIdx; pr.dataset.idx = i;
+          pr.style.touchAction = 'none';
+          structureGroup.appendChild(pr);
+
+          // slightly wider invisible hit area (includes the small gap) so
+          // dragging/tapping stays comfortable even with tightly packed panels
+          const hitRect = el('rect', {x:drawX-PANEL_GAP/2, y:drawY, width:drawW+PANEL_GAP, height:drawH, fill:'transparent'});
+          hitRect.dataset.section = s.id; hitRect.dataset.row = rIdx; hitRect.dataset.idx = i;
+          hitRect.style.touchAction = 'none';
+          structureGroup.appendChild(hitRect);
+
+          hitRect.addEventListener('pointerdown', ev => onPanelPointerDown(ev, pr));
+          pr.addEventListener('pointerdown', ev => onPanelPointerDown(ev, pr));
+
+          if(state.panel.image){
+            const clipId = `panelClip_${clipCounter++}`;
+            const clipPath = el('clipPath', {id: clipId});
+            clipPath.appendChild(el('rect', {x:drawX, y:drawY, width:drawW, height:drawH, rx:2}));
+            structureGroup.appendChild(clipPath);
+            const img = el('image', {x:drawX, y:drawY, width:drawW, height:drawH, preserveAspectRatio:'xMidYMid slice', class:'panel-img'});
+            img.setAttribute('clip-path', `url(#${clipId})`);
+            img.setAttributeNS('http://www.w3.org/1999/xlink', 'href', state.panel.image);
+            img.setAttribute('href', state.panel.image);
+            img.style.pointerEvents = 'none';
+            img.dataset.section = s.id; img.dataset.row = rIdx; img.dataset.idx = i;
+            structureGroup.appendChild(img);
+          }
+        }
+
+
+        if(!state.previewMode && !vertical){
+          const xBase = x0 + marginPx;
+          const rowArrayW = widthForCols(count, drawW, PANEL_GAP, state.gapXAfter);
+          [railY_top, railY_bot].forEach(ry => {
+            // rail pieces + splices (on top of panels) — sized to the actual
+            // panel array length, not the full roof width.
+            // na vida real o trilho sempre "passa" um pouco de cada ponto de
+            // apoio (grampo final, grampo intermediário, emenda) em vez de
+            // terminar exatamente nele — por isso cada peça é desenhada um
+            // pouco maior que seu vão: END_OVERHANG nas duas pontas da
+            // fileira (o trilho sai fora da área das placas) e
+            // SPLICE_OVERHANG de cada lado nas emendas internas (as duas
+            // peças se sobrepõem visualmente em vez de deixar um vão vazio)
+            const pieceW = rowArrayW / Math.max(1,R);
+            const END_OVERHANG = 14, SPLICE_OVERHANG = 8;
+            for(let p=0;p<R;p++){
+              const x1 = xBase + p*pieceW - (p===0 ? END_OVERHANG : SPLICE_OVERHANG);
+              const x2 = xBase + (p+1)*pieceW + (p===R-1 ? END_OVERHANG : SPLICE_OVERHANG);
+              structureGroup.appendChild(el('line', {x1, y1:ry, x2, y2:ry, class:'rail-line'}));
+              if(p>0){
+                structureGroup.appendChild(el('line', {x1:xBase+p*pieceW, y1:ry-6, x2:xBase+p*pieceW, y2:ry+6, class:'splice-mark'}));
+              }
+            }
+            // end clamps (grampo final)
+            structureGroup.appendChild(el('circle', {cx:xBase+2, cy:ry, r:4, class:'clamp-dot final'}));
+            structureGroup.appendChild(el('circle', {cx:xBase+rowArrayW-2, cy:ry, r:4, class:'clamp-dot final'}));
+
+            // mounting hardware (parafuso estrutural + chapa L), um par em cada
+            // ponto de apoio do trilho: início de cada peça (R pontos) + o final
+            // da última peça — R+1 pontos por linha de trilho. Regra (conforme
+            // esboço): o parafuso sempre fica logo no COMEÇO da peça de trilho,
+            // um pouco depois do ponto de apoio (seja o início da fileira, seja
+            // logo após a emenda, já no trilho seguinte) — nunca antes da emenda,
+            // no trilho que está terminando. Só o parafuso do final da fileira
+            // (não tem próxima peça) fica um pouco antes, dentro da última peça.
+            // parafuso/chapa L ficam direto em cima do trilho (já na posição
+            // real, sem afastamento — o trilho em si já está no lugar certo)
+            const mountOffset = 8;
+            for(let p=0;p<=R;p++){
+              const boundaryX = xBase + p*pieceW;
+              const mx = (p===R) ? boundaryX - mountOffset : boundaryX + mountOffset;
+              structureGroup.appendChild(el('rect', {x:mx-3, y:ry-3, width:6, height:6, class:'mount-plate'}));
+              structureGroup.appendChild(el('circle', {cx:mx, cy:ry, r:1.8, class:'mount-screw'}));
+            }
+          });
+
+          // intermediate clamps (grampo intermediário) at panel joins, on top of everything
+          if(!vertical){
+            for(let i=1;i<count;i++){
+              // espaço local entre a placa i-1 e a i: só existe (PANEL_GAP) bem
+              // na junção configurada; nas demais colunas as placas se tocam
+              const localGap = (state.gapXAfter>0 && i===state.gapXAfter) ? PANEL_GAP : 0;
+              const cx2 = x0 + marginPx + colOffset(i, drawW, PANEL_GAP, state.gapXAfter) + 2 - localGap/2;
+              structureGroup.appendChild(el('circle', {cx:cx2, cy:railY_top, r:4, class:'clamp-dot'}));
+              structureGroup.appendChild(el('circle', {cx:cx2, cy:railY_bot, r:4, class:'clamp-dot'}));
+            }
+          }
+        }
+      });
+
+      // trilhos no modo Paisagem: como a placa deitada vira o trilho na
+      // vertical, o trilho passa a unir 2 fileiras empilhadas (a mesma
+      // lógica de "2 placas por trilho" do modo Retrato, só que agora
+      // subindo/descendo entre fileiras em vez de andando pela fileira).
+      // Segue as mesmas regras visuais do modo horizontal: trilho afastado
+      // da borda da placa (railInsetX), overhang nas pontas/emendas, e
+      // parafuso/chapa L direto em cima do trilho
+      if(!state.previewMode && vertical){
+        const panelsPerPiece = Math.max(1, Math.floor(state.railLen / Math.min(state.panel.w, state.panel.h)));
+        const mountOffset = 8;
+        const END_OVERHANG = 14, SPLICE_OVERHANG = 8;
+
+        // peças físicas de trilho: cada peça cobre panelsPerPiece fileiras
+        // empilhadas (mesma lógica de "N placas por peça" do modo Retrato,
+        // só que aqui empilhando na vertical). Uma peça é UM traço contínuo
+        // sem corte — a emenda só aparece na junção ENTRE peças, nunca no
+        // meio de uma peça só porque ela atravessa mais de uma fileira
+        const groups = [];
+        for(let rp=0; rp<s.rows.length; rp+=panelsPerPiece){
+          const g = [];
+          for(let k=0;k<panelsPerPiece && rp+k<s.rows.length;k++) g.push(rp+k);
+          groups.push(g);
+        }
+
+        const maxCols = s.rows.length ? Math.max(...s.rows) : 0;
+        for(let i=0;i<maxCols;i++){
+          const px = x0 + marginPx + colOffset(i, scalePxW, PANEL_GAP, state.gapXAfter);
+          [px+railInsetX, px+scalePxW-railInsetX].forEach(rx => {
+            const activeGroups = groups
+              .map(g => g.filter(r => i < s.rows[r]))
+              .filter(g => g.length>0);
+            if(activeGroups.length===0) return;
+
+            activeGroups.forEach((present, gi) => {
+              const segTop = rowTops[present[0]] + 2;
+              const segBot = rowTops[present[present.length-1]] + scalePxH - 2;
+              const y1 = segTop - (gi===0 ? END_OVERHANG : SPLICE_OVERHANG);
+              const y2 = segBot + (gi===activeGroups.length-1 ? END_OVERHANG : SPLICE_OVERHANG);
+              structureGroup.appendChild(el('line', {x1:rx, y1, x2:rx, y2, class:'rail-line'}));
+              if(gi>0){
+                const prevPresent = activeGroups[gi-1];
+                const prevBot = rowTops[prevPresent[prevPresent.length-1]] + scalePxH - 2;
+                const yJoin = (prevBot + segTop) / 2;
+                structureGroup.appendChild(el('line', {x1:rx-6, y1:yJoin, x2:rx+6, y2:yJoin, class:'splice-mark'}));
+              }
+              // parafuso + chapa L no início de CADA peça (mesma regra do
+              // Retrato: fica logo depois do ponto de apoio — início da
+              // fileira ou, se veio de uma emenda, logo após ela, já na
+              // peça seguinte — nunca antes da emenda)
+              const myStart = segTop + mountOffset;
+              structureGroup.appendChild(el('rect', {x:rx-3, y:myStart-3, width:6, height:6, class:'mount-plate'}));
+              structureGroup.appendChild(el('circle', {cx:rx, cy:myStart, r:1.8, class:'mount-screw'}));
+            });
+
+            // parafuso final: único ponto que fica um pouco ANTES do fim
+            // (dentro da última peça, sem próxima peça pra empurrar pra lá)
+            const yTop = rowTops[activeGroups[0][0]] + 2;
+            const lastGroup = activeGroups[activeGroups.length-1];
+            const yBot = rowTops[lastGroup[lastGroup.length-1]] + scalePxH - 2;
+            const myEnd = yBot - mountOffset;
+            structureGroup.appendChild(el('rect', {x:rx-3, y:myEnd-3, width:6, height:6, class:'mount-plate'}));
+            structureGroup.appendChild(el('circle', {cx:rx, cy:myEnd, r:1.8, class:'mount-screw'}));
+
+            structureGroup.appendChild(el('circle', {cx:rx, cy:yTop, r:4, class:'clamp-dot final'}));
+            structureGroup.appendChild(el('circle', {cx:rx, cy:yBot, r:4, class:'clamp-dot final'}));
+          });
+
+          // grampo intermediário: só na direção do trilho (entre placas
+          // empilhadas na mesma coluna), igual aos outros grampos dessa
+          // coluna — não tem grampo entre colunas vizinhas no modo Paisagem
+          for(let r=1;r<s.rows.length;r++){
+            if(i<s.rows[r-1] && i<s.rows[r]){
+              const cyJoin = (rowTops[r-1] + scalePxH - 2 + rowTops[r] + 2) / 2;
+              [px+railInsetX, px+scalePxW-railInsetX].forEach(rx=>{
+                structureGroup.appendChild(el('circle', {cx:rx, cy:cyJoin, r:4, class:'clamp-dot'}));
+              });
+            }
+          }
+        }
+      }
+
+      // fit handles: pra qualquer seção ativa, mesmo sem foto — dá pra
+      // reposicionar/redimensionar/girar a estrutura livremente dentro do
+      // telhado, não só pra encaixar numa foto
+      if(isActive && !state.previewMode){
+        const rot = s.overlay.rotation || 0;
+        const rad = rot * Math.PI/180;
+        const cosR = Math.cos(rad), sinR = Math.sin(rad);
+        const rotatePoint = (ox, oy) => ({ x: ox*cosR - oy*sinR, y: ox*sinR + oy*cosR });
+
+        const outline = el('rect', {x:x0, y:y0, width:wpx, height:hpx, class:'fit-outline'});
+        outline.setAttribute('transform', overlayTransform(cx, cy, s.overlay.dx, s.overlay.dy, s.overlay.scale, rot));
+        svg.appendChild(outline);
+
+        const moveX = cx + s.overlay.dx, moveY = cy + s.overlay.dy;
+
+        // rotate handle: sits above the structure, follows its current tilt
+        const topOffset = rotatePoint(0, -(s.overlay.scale*(hpx/2) + 26));
+        const rotX = moveX + topOffset.x, rotY = moveY + topOffset.y;
+        const topEdge = rotatePoint(0, -(s.overlay.scale*(hpx/2)));
+        svg.appendChild(el('line', {x1:moveX+topEdge.x, y1:moveY+topEdge.y, x2:rotX, y2:rotY, class:'fit-rotate-line'}));
+        const rotateHandle = el('circle', {cx:rotX, cy:rotY, r:9, class:'fit-handle rotate'});
+        rotateHandle.style.cursor = 'grab';
+        rotateHandle.addEventListener('pointerdown', ev => startOverlayRotate(ev, s, moveX, moveY));
+        svg.appendChild(rotateHandle);
+        const rotateIcon = el('text', {x:rotX, y:rotY+4, class:'fit-handle-icon'});
+        rotateIcon.textContent = '↻';
+        rotateIcon.style.pointerEvents = 'none';
+        svg.appendChild(rotateIcon);
+
+        const moveHandle = el('circle', {cx:moveX, cy:moveY, r:11, class:'fit-handle move'});
+        moveHandle.style.cursor = 'move';
+        moveHandle.addEventListener('pointerdown', ev => startOverlayMove(ev, s, cx, cy));
+        svg.appendChild(moveHandle);
+        const moveIcon = el('text', {x:moveX, y:moveY+4, class:'fit-handle-icon'});
+        moveIcon.textContent = '✥';
+        moveIcon.style.pointerEvents = 'none';
+        svg.appendChild(moveIcon);
+
+        const cornerOffset = rotatePoint(s.overlay.scale*(wpx/2), s.overlay.scale*(hpx/2));
+        const rrx = moveX + cornerOffset.x, rry = moveY + cornerOffset.y;
+        const resizeHandle = el('circle', {cx:rrx, cy:rry, r:9, class:'fit-handle resize'});
+        resizeHandle.style.cursor = 'nwse-resize';
+        resizeHandle.addEventListener('pointerdown', ev => startOverlayResize(ev, s, cx, cy));
+        svg.appendChild(resizeHandle);
+      }
+    }
+
+    // linha-guia semi-transparente marcando onde fica a cumeeira (centro da
+    // inclinação) nessa seção — só faz sentice quando o telhado tem inclinação
+    // configurada; sem isso só dava pra ver a cumeeira na aba 3D
+    function drawRidgeGuide(s, x0, y0, wpx, hpx){
+      if(state.previewMode) return;
+      if(!(s.pitch>0)) return;
+      const ridgePos = Math.max(0, Math.min(s.w, s.ridgePos!=null ? s.ridgePos : s.w/2));
+      const rx = x0 + ridgePos*scale;
+      svg.appendChild(el('line', {x1:rx, y1:y0, x2:rx, y2:y0+hpx, stroke:'#ffd166', 'stroke-width':2.5, 'stroke-dasharray':'7 6', opacity:0.55}));
+      const tag = el('text', {x:rx, y:y0+16, 'text-anchor':'middle', style:"fill:#ffd166;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;"});
+      tag.textContent = 'cumeeira';
+      svg.appendChild(tag);
+    }
+
+    const boxById = {};
+
+    anchors.forEach(s => {
+      const isActive = s.id === state.activeSectionId;
+      const x0 = cursorX, y0 = 60;
+      const wpx = s.w*scale, hpx = s.h*scale;
+      const cx = x0 + wpx/2, cy = y0 + hpx/2;
+      boxById[s.id] = {x0, y0, wpx, hpx};
+
+      if(s.roofImage){
+        const clipId = `roofClip_${clipCounter++}`;
+        const clipPath = el('clipPath', {id: clipId});
+        clipPath.appendChild(el('rect', {x:x0, y:y0, width:wpx, height:hpx}));
+        svg.appendChild(clipPath);
+
+        // backdrop: the same photo, full-cover + blurred/dimmed, so that
+        // shrinking the photo above never exposes a flat white gap
+        if(!document.getElementById('roofBlurFilter')){
+          const defs = el('defs', {});
+          const filter = el('filter', {id:'roofBlurFilter', x:'-20%', y:'-20%', width:'140%', height:'140%'});
+          filter.appendChild(el('feGaussianBlur', {stdDeviation:8}));
+          defs.appendChild(filter);
+          svg.appendChild(defs);
+        }
+        const backdrop = el('image', {x:x0, y:y0, width:wpx, height:hpx, preserveAspectRatio:'xMidYMid slice', filter:'url(#roofBlurFilter)', opacity:0.55});
+        backdrop.setAttribute('clip-path', `url(#${clipId})`);
+        backdrop.setAttributeNS('http://www.w3.org/1999/xlink', 'href', s.roofImage);
+        backdrop.setAttribute('href', s.roofImage);
+        svg.appendChild(backdrop);
+        svg.appendChild(el('rect', {x:x0, y:y0, width:wpx, height:hpx, fill:'#0b2038', opacity:0.25, 'clip-path':`url(#${clipId})`}));
+
+        const zoom = s.roofZoom || 1;
+        const roofImgGroup = el('g', {});
+        roofImgGroup.setAttribute('clip-path', `url(#${clipId})`);
+        roofImgGroup.setAttribute('transform', `translate(${cx},${cy}) scale(${zoom}) translate(${-cx},${-cy})`);
+        const roofImg = el('image', {x:x0, y:y0, width:wpx, height:hpx, preserveAspectRatio:'xMidYMid meet'});
+        roofImg.setAttributeNS('http://www.w3.org/1999/xlink', 'href', s.roofImage);
+        roofImg.setAttribute('href', s.roofImage);
+        roofImgGroup.appendChild(roofImg);
+        svg.appendChild(roofImgGroup);
+        svg.appendChild(el('rect', {x:x0,y:y0,width:wpx,height:hpx, fill:'none',
+          stroke: (isActive && !state.previewMode) ? '#dd8b3e':'#b9bfa9', 'stroke-width': (isActive && !state.previewMode)?2:1}));
+      } else {
+        svg.appendChild(el('rect', {x:x0,y:y0,width:wpx,height:hpx,class:'roof-bg',
+          stroke: (isActive && !state.previewMode) ? '#dd8b3e':'#b9bfa9', 'stroke-width': (isActive && !state.previewMode)?2:1}));
+      }
+      if(!state.previewMode){
+        svg.appendChild(el('text', {x:x0, y:y0-14, class:'section-label'})).textContent = `${s.name}`;
+        svg.appendChild(el('text', {x:x0, y:y0-2, class:'dim-label'})).textContent = `${s.w}m × ${s.h}m`;
+      }
+
+      // click roof to activate
+      const hit = el('rect', {x:x0,y:y0,width:wpx,height:hpx,fill:'transparent'});
+      hit.style.cursor='pointer';
+      hit.onclick = () => { state.activeSectionId = s.id; renderAll(); };
+      svg.appendChild(hit);
+
+      drawRidgeGuide(s, x0, y0, wpx, hpx);
+      drawStructure(s, x0, y0, wpx, hpx, cx, cy, isActive, false);
+
+      cursorX += wpx + GAP;
+    });
+
+    // referencer sections: no photo/slot of their own — their structure floats
+    // on top of the anchor section whose photo they borrowed
+    referencers.forEach(s => {
+      const target = boxById[s.roofImageRef];
+      if(!target) return;
+      const isActive = s.id === state.activeSectionId;
+      const x0 = target.x0, y0 = target.y0;
+      const wpx = s.w*scale, hpx = s.h*scale;
+      const cx = x0 + wpx/2, cy = y0 + hpx/2;
+      drawRidgeGuide(s, x0, y0, wpx, hpx);
+      drawStructure(s, x0, y0, wpx, hpx, cx, cy, isActive, true);
+    });
+  }
+
+  // ---------- drag handles: reposition/resize the whole structure over a roof photo ----------
+  function startOverlayMove(e, s, cx, cy){
+    e.preventDefault(); e.stopPropagation();
+    const svg = document.getElementById('svg2d');
+    const start = svgPoint(svg, e.clientX, e.clientY);
+    const startDx = s.overlay.dx, startDy = s.overlay.dy;
+    function move(ev){
+      const p = svgPoint(svg, ev.clientX, ev.clientY);
+      s.overlay.dx = startDx + (p.x - start.x);
+      s.overlay.dy = startDy + (p.y - start.y);
+      render2D();
+    }
+    function up(){
+      document.removeEventListener('pointermove', move);
+      document.removeEventListener('pointerup', up);
+    }
+    document.addEventListener('pointermove', move);
+    document.addEventListener('pointerup', up);
+  }
+
+  function startOverlayResize(e, s, cx, cy){
+    e.preventDefault(); e.stopPropagation();
+    const svg = document.getElementById('svg2d');
+    const centerX = cx + s.overlay.dx, centerY = cy + s.overlay.dy;
+    const start = svgPoint(svg, e.clientX, e.clientY);
+    const startDist = Math.hypot(start.x-centerX, start.y-centerY) || 1;
+    const startScale = s.overlay.scale;
+    function move(ev){
+      const p = svgPoint(svg, ev.clientX, ev.clientY);
+      const dist = Math.hypot(p.x-centerX, p.y-centerY) || 1;
+      s.overlay.scale = Math.min(3, Math.max(0.3, startScale * (dist/startDist)));
+      render2D();
+    }
+    function up(){
+      document.removeEventListener('pointermove', move);
+      document.removeEventListener('pointerup', up);
+    }
+    document.addEventListener('pointermove', move);
+    document.addEventListener('pointerup', up);
+  }
+
+  function startOverlayRotate(e, s, centerX, centerY){
+    e.preventDefault(); e.stopPropagation();
+    const svg = document.getElementById('svg2d');
+    const start = svgPoint(svg, e.clientX, e.clientY);
+    const startAngle = Math.atan2(start.y-centerY, start.x-centerX) * 180/Math.PI;
+    const startRotation = s.overlay.rotation || 0;
+    function move(ev){
+      const p = svgPoint(svg, ev.clientX, ev.clientY);
+      const angle = Math.atan2(p.y-centerY, p.x-centerX) * 180/Math.PI;
+      let rotation = startRotation + (angle - startAngle);
+      // snap close to straight/45° angles to make it easy to square up with the roof
+      const snaps = [-180,-135,-90,-45,0,45,90,135,180];
+      for(const snap of snaps){ if(Math.abs(rotation-snap) < 3){ rotation = snap; break; } }
+      s.overlay.rotation = rotation;
+      render2D();
+    }
+    function up(){
+      document.removeEventListener('pointermove', move);
+      document.removeEventListener('pointerup', up);
+    }
+    document.addEventListener('pointermove', move);
+    document.addEventListener('pointerup', up);
+  }
+
+  // drag panel between rows
+  let dragging = null;
+  function findPanelImg(t){
+    return document.querySelector(`.panel-img[data-section="${t.dataset.section}"][data-row="${t.dataset.row}"][data-idx="${t.dataset.idx}"]`);
+  }
+  function onPanelPointerDown(e, visualEl){
+    e.preventDefault();
+    const t = e.currentTarget;
+    const vis = visualEl || t;
+    dragging = { fromSection: t.dataset.section, fromRow: parseInt(t.dataset.row) };
+    vis.classList.add('dragging');
+    vis.style.fill = 'var(--accent)';
+    const img = findPanelImg(vis);
+    if(img) img.style.opacity = '0';
+    document.querySelectorAll('.row-drop-target').forEach(z=>z.classList.add('show'));
+    document.addEventListener('pointermove', onPointerMove);
+    document.addEventListener('pointerup', onPointerUp);
+  }
+  function onPointerMove(e){
+    const zones = document.querySelectorAll('.row-drop-target');
+    zones.forEach(z=>{
+      const r = z.getBoundingClientRect();
+      const inside = e.clientX>=r.left && e.clientX<=r.right && e.clientY>=r.top && e.clientY<=r.bottom;
+      z.style.opacity = inside ? .28 : .1;
+    });
+  }
+  function onPointerUp(e){
+    document.removeEventListener('pointermove', onPointerMove);
+    document.removeEventListener('pointerup', onPointerUp);
+    document.querySelectorAll('.panel-rect.dragging').forEach(p=>{
+      p.classList.remove('dragging');
+      p.style.fill = '';
+      const img = findPanelImg(p);
+      if(img) img.style.opacity = '';
+    });
+    const zones = document.querySelectorAll('.row-drop-target');
+    let target = null;
+    zones.forEach(z=>{
+      const r = z.getBoundingClientRect();
+      if(e.clientX>=r.left && e.clientX<=r.right && e.clientY>=r.top && e.clientY<=r.bottom) target = z;
+    });
+    if(target && dragging){
+      const toSection = target.dataset.section, toRow = parseInt(target.dataset.row);
+      const fromSection = state.sections.find(s=>s.id===dragging.fromSection);
+      const toSectionObj = state.sections.find(s=>s.id===toSection);
+      if(fromSection && toSectionObj && !(fromSection.id===toSectionObj.id && dragging.fromRow===toRow)){
+        fromSection.rows[dragging.fromRow] = Math.max(0, fromSection.rows[dragging.fromRow]-1);
+        toSectionObj.rows[toRow] = toSectionObj.rows[toRow]+1;
+        renderAll();
+      }
+    }
+    dragging = null;
+    document.querySelectorAll('.row-drop-target').forEach(z=>{z.classList.remove('show'); z.style.opacity='';});
+  }
+
+  // ---------- 3D render ----------
+  let rotX = -55, rotY = 20, zoom3d = 1;
+  const scene3d = document.getElementById('scene3d');
+  const stage3dWrap = document.getElementById('stage3dWrap');
+
+  function applyRotation(){
+    rotX = Math.max(-85, Math.min(-5, rotX));
+    zoom3d = Math.max(0.4, Math.min(2.5, zoom3d));
+    scene3d.style.transform = `scale(${zoom3d}) rotateX(${rotX}deg) rotateZ(${rotY}deg)`;
+  }
+
+  function render3D(){
+    scene3d.innerHTML = '';
+    const scale = 42;
+    const scale2D = 46; // precisa bater com o "px per meter" do render2D, para
+                         // converter o arrasto fino (overlay.dx/dy) de lá pra cá
+    const sections = state.sections;
+    const gap = 60;
+
+    // seções que usam a foto de OUTRA seção (roofImageRef) não são um
+    // telhado à parte — na vida real elas são placas de cima do MESMO
+    // telhado, só configuradas separadamente (orientação/placas diferentes).
+    // Por isso não ganham telhado/grupo 3D próprio: as placas delas são
+    // desenhadas DENTRO do telhado-âncora, na posição certa (mesmo
+    // deslocamento fino dx/dy do 2D, convertido de escala), seguindo a
+    // mesma inclinação/água que o restante do telhado A já usa.
+    const isReferencer3d = s => s.roofImageRef && sections.some(a=>a.id===s.roofImageRef);
+    const anchors = sections.filter(s => !isReferencer3d(s));
+    const referencers = sections.filter(isReferencer3d);
+
+    const slot = {};
+    let cursorX = 0;
+    anchors.forEach(s=>{
+      const wpx = s.w*scale, hpx = s.h*scale;
+      slot[s.id] = {x3d: cursorX, y3d: 0, wpx, hpx};
+      cursorX += wpx + gap;
+    });
+
+    // essas seções não ganham telhado 3D próprio (ficam dentro do grupo da
+    // âncora, ver mais abaixo) — aqui só calculamos onde cada uma cairia,
+    // para: (a) a posição real das placas dela (offset a partir da âncora,
+    // igual ao 2D) e (b) incluir essa área no tamanho da cena, já que ela
+    // pode ficar deslocada para fora da caixa da âncora
+    const refSlot = {};
+    referencers.forEach(s=>{
+      const anchorSlot = slot[s.roofImageRef];
+      if(!anchorSlot) return; // âncora sem foto/inválida: não tem onde posicionar
+      const wpx = s.w*scale, hpx = s.h*scale;
+      const offX = (s.overlay.dx/scale2D)*scale;
+      const offY = (s.overlay.dy/scale2D)*scale;
+      refSlot[s.id] = {x3d: anchorSlot.x3d+offX, y3d: anchorSlot.y3d+offY, wpx, hpx};
+    });
+
+    let maxRight = 0, maxBottom = 0, minLeft = 0, minTop = 0;
+    sections.forEach(s=>{
+      const sl = slot[s.id] || refSlot[s.id];
+      if(!sl) return;
+      minLeft = Math.min(minLeft, sl.x3d);
+      minTop = Math.min(minTop, sl.y3d);
+      maxRight = Math.max(maxRight, sl.x3d+sl.wpx);
+      maxBottom = Math.max(maxBottom, sl.y3d+sl.hpx);
+    });
+    // painéis-referência podem ficar deslocados para fora da área das
+    // âncoras (esquerda/cima); desloca a cena toda para que nada fique
+    // cortado fora da área visível
+    const sceneShiftX = -minLeft, sceneShiftY = -minTop;
+    scene3d.style.width = (maxRight+sceneShiftX)+'px';
+    scene3d.style.height = (maxBottom+sceneShiftY)+'px';
+
+    // desenha os trilhos+placas de uma seção dentro do grupo (esquerda ou
+    // direita da cumeeira) certo. offX,offY vêm do deslocamento fino
+    // (overlay.dx/dy) já convertido pra escala 3D — usado tanto para a
+    // própria seção-âncora quanto pras que só emprestam o telhado dela.
+    // O ajuste fino também tem rotação e zoom (overlay.rotation/scale,
+    // usados no 2D pra alinhar a estrutura com o ângulo da foto) — aqui
+    // giramos/escalamos cada peça em torno do centro da PRÓPRIA seção,
+    // do mesmo jeito que o 2D faz, e só depois aplica offX,offY.
+    function renderRowsInto(s, pickGrp, offX, offY){
+      const dims3d = effPanelDims(s);
+      const scalePxW3d = dims3d.w * scale, scalePxH3d = dims3d.h * scale;
+      const PANEL_GAP3D = Math.max(1, state.gapX*scale);
+      const ROW_GAP3D = s.packedRows ? Math.max(1, state.gapX*scale) : Math.max(1, state.gapY*scale);
+      const rowTops3d = [];
+      // afastamento da borda: mesma regra do 2D, convertida pra escala 3D
+      const marginPx3d = state.edgeMargin*scale;
+      let cursorY3d = marginPx3d;
+      s.rows.forEach(()=>{ rowTops3d.push(cursorY3d); cursorY3d += scalePxH3d + ROW_GAP3D; });
+
+      // mesma regra prática do 2D: o trilho fica afastado ~20% do
+      // comprimento da placa a partir de cada ponta (não rente à borda),
+      // com o mesmo limite mín/máx convertido pra escala do 3D
+      const railInsetY3d = Math.max(18*scale/scale2D, Math.min(38*scale/scale2D, scalePxH3d*0.2));
+      const railInsetX3d = Math.max(18*scale/scale2D, Math.min(38*scale/scale2D, scalePxW3d*0.2));
+      // no modo Paisagem a placa fica deitada e o trilho vira na vertical,
+      // unindo fileiras empilhadas (igual ao 2D) — em vez de um trilho por
+      // fileira, horizontal
+      const vertical = (s.orientation === 'paisagem');
+
+      const rotDeg = s.overlay.rotation||0;
+      const zoomMult = s.overlay.scale!=null ? s.overlay.scale : 1;
+      const cosR = Math.cos(rotDeg*Math.PI/180), sinR = Math.sin(rotDeg*Math.PI/180);
+      // pivô = centro da PRÓPRIA seção (sua própria largura/altura), igual
+      // ao "cx,cy" do 2D
+      const pivotX = (s.w*scale)/2, pivotY = (s.h*scale)/2;
+      function place(lx, ly){
+        const qx = (lx-pivotX)*zoomMult, qy = (ly-pivotY)*zoomMult;
+        return { x: qx*cosR - qy*sinR + pivotX + offX, y: qx*sinR + qy*cosR + pivotY + offY };
+      }
+
+      s.rows.forEach((count, rIdx) => {
+        const panelTop3d = rowTops3d[rIdx];
+        const railY_top = panelTop3d + railInsetY3d;
+        const railY_bot = panelTop3d + scalePxH3d - railInsetY3d;
+        const R = Math.ceil(count/Math.max(1, Math.floor(state.railLen / Math.min(state.panel.w, state.panel.h))));
+        const rowArrayW3d = widthForCols(count, scalePxW3d, PANEL_GAP3D, state.gapXAfter);
+        const pieceWLocal = rowArrayW3d / Math.max(1,R);
+        const pieceW = pieceWLocal * zoomMult;
+
+        if(!vertical){
+          [railY_top, railY_bot].forEach(ry=>{
+            for(let p=0;p<R;p++){
+              const railLeftLocal = marginPx3d + p*pieceWLocal+2;
+              const pos = place(railLeftLocal+(pieceWLocal-4)/2, ry);
+              const rail = document.createElement('div');
+              rail.className = 'rail3d';
+              rail.style.left = (pos.x-pieceW/2)+'px';
+              rail.style.top = (pos.y-2*zoomMult)+'px';
+              rail.style.width = (pieceW-4*zoomMult)+'px';
+              rail.style.height = (4*zoomMult)+'px';
+              rail.style.transform = `translateZ(4px) rotate(${rotDeg}deg)`;
+              pickGrp(pos.x).appendChild(rail);
+            }
+          });
+        }
+
+        for(let i=0;i<count;i++){
+          const panelLeft = marginPx3d + colOffset(i, scalePxW3d, PANEL_GAP3D, state.gapXAfter) + 2;
+          const pw = scalePxW3d*zoomMult, ph = scalePxH3d*zoomMult;
+          const pos = place(panelLeft+scalePxW3d/2, panelTop3d+scalePxH3d/2);
+          const p = document.createElement('div');
+          p.className = 'panel3d';
+          p.style.left = (pos.x-pw/2)+'px';
+          p.style.top = (pos.y-ph/2)+'px';
+          p.style.width = pw+'px';
+          p.style.height = ph+'px';
+          p.style.transform = `translateZ(8px) rotate(${rotDeg}deg)`;
+          if(state.panel.image){
+            p.style.background = `url("${state.panel.image}") center/cover no-repeat`;
+          }
+          pickGrp(pos.x).appendChild(p);
+        }
+      });
+
+      // trilhos no modo Paisagem: mesma lógica do 2D — como a placa deitada
+      // vira o trilho na vertical, uma peça de trilho une várias fileiras
+      // empilhadas (panelsPerPiece de cada vez) em vez de ficar dentro de
+      // uma fileira só
+      if(vertical){
+        const panelsPerPiece = Math.max(1, Math.floor(state.railLen / Math.min(state.panel.w, state.panel.h)));
+        const END_OVERHANG3D = 14*scale/scale2D, SPLICE_OVERHANG3D = 8*scale/scale2D;
+
+        const groups = [];
+        for(let rp=0; rp<s.rows.length; rp+=panelsPerPiece){
+          const g = [];
+          for(let k=0;k<panelsPerPiece && rp+k<s.rows.length;k++) g.push(rp+k);
+          groups.push(g);
+        }
+
+        const maxCols = s.rows.length ? Math.max(...s.rows) : 0;
+        for(let i=0;i<maxCols;i++){
+          const panelLeftLocal = marginPx3d + colOffset(i, scalePxW3d, PANEL_GAP3D, state.gapXAfter) + 2;
+          [panelLeftLocal+railInsetX3d, panelLeftLocal+scalePxW3d-railInsetX3d].forEach(xLocal=>{
+            const activeGroups = groups
+              .map(g => g.filter(r => i < s.rows[r]))
+              .filter(g => g.length>0);
+            if(activeGroups.length===0) return;
+
+            activeGroups.forEach((present, gi)=>{
+              const segTop = rowTops3d[present[0]] + 2;
+              const segBot = rowTops3d[present[present.length-1]] + scalePxH3d - 2;
+              const y1 = segTop - (gi===0 ? END_OVERHANG3D : SPLICE_OVERHANG3D);
+              const y2 = segBot + (gi===activeGroups.length-1 ? END_OVERHANG3D : SPLICE_OVERHANG3D);
+              const center = place(xLocal, (y1+y2)/2);
+              const rail = document.createElement('div');
+              rail.className = 'rail3d';
+              rail.style.left = (center.x-2*zoomMult)+'px';
+              rail.style.top = (center.y-(y2-y1)*zoomMult/2)+'px';
+              rail.style.width = (4*zoomMult)+'px';
+              rail.style.height = ((y2-y1)*zoomMult)+'px';
+              rail.style.transform = `translateZ(4px) rotate(${rotDeg}deg)`;
+              pickGrp(center.x).appendChild(rail);
+            });
+          });
+        }
+      }
+    }
+
+    // constrói o telhado de duas águas (um grupo 3D de cada lado da
+    // cumeeira, cada um se inclinando para fora dela) — só as seções-âncora
+    // (as que têm foto própria, ou nenhuma) ganham essa estrutura visual
+    // (telhado de madeira + caibros). Seções que só emprestam a foto de
+    // outra (referencers) NÃO são um telhado à parte: continuam a mesma
+    // água/telhado físico da âncora, só configuradas separadamente — por
+    // isso desenham as placas DENTRO do grupo já criado pela âncora.
+    function buildRoofGroup(s, x3d, y3d, wpx, hpx){
+      const ridgePx = Math.max(0, Math.min(wpx, (s.ridgePos!=null?s.ridgePos:s.w/2)*scale));
+      const pitch = s.pitch||0;
+
+      const grpLeft = document.createElement('div');
+      grpLeft.style.position = 'absolute';
+      grpLeft.style.left = x3d+'px';
+      grpLeft.style.top = y3d+'px';
+      grpLeft.style.transformStyle = 'preserve-3d';
+      grpLeft.style.transformOrigin = `${ridgePx}px center`;
+      grpLeft.style.transform = `rotateY(${-pitch}deg)`;
+      scene3d.appendChild(grpLeft);
+
+      const grpRight = document.createElement('div');
+      grpRight.style.position = 'absolute';
+      grpRight.style.left = x3d+'px';
+      grpRight.style.top = y3d+'px';
+      grpRight.style.transformStyle = 'preserve-3d';
+      grpRight.style.transformOrigin = `${ridgePx}px center`;
+      grpRight.style.transform = `rotateY(${pitch}deg)`;
+      scene3d.appendChild(grpRight);
+
+      const pickGrp = xCenterPx => xCenterPx < ridgePx ? grpLeft : grpRight;
+
+      const roofType = s.roofType || 'colonial';
+
+      const roofL = document.createElement('div');
+      roofL.className = 'roof3d roof3d-'+roofType;
+      roofL.style.left = '0px'; roofL.style.top = '0px';
+      roofL.style.width = ridgePx+'px'; roofL.style.height = hpx+'px';
+      roofL.style.transform = 'translateZ(0px)';
+      grpLeft.appendChild(roofL);
+
+      const roofR = document.createElement('div');
+      roofR.className = 'roof3d roof3d-'+roofType;
+      roofR.style.left = ridgePx+'px'; roofR.style.top = '0px';
+      roofR.style.width = (wpx-ridgePx)+'px'; roofR.style.height = hpx+'px';
+      roofR.style.transform = 'translateZ(0px)';
+      grpRight.appendChild(roofR);
+
+      // estrutura de madeira (caibros) por baixo dos trilhos, só de enfeite
+      // visual — dá o relevo/profundidade de uma cobertura real como na
+      // referência, sem mudar nenhum cálculo. Numa laje de concreto não tem
+      // caibro aparente, então pula esse enfeite nesse caso.
+      if(roofType !== 'laje'){
+        const RAFTER_COUNT = 4;
+        [[grpLeft, 0, ridgePx], [grpRight, ridgePx, wpx]].forEach(([g, x1, x2])=>{
+          for(let k=0;k<RAFTER_COUNT;k++){
+            const ry = (k+0.5) * hpx / RAFTER_COUNT;
+            const rafter = document.createElement('div');
+            rafter.className = 'rafter3d';
+            rafter.style.left = x1+'px';
+            rafter.style.top = (ry-3)+'px';
+            rafter.style.width = (x2-x1)+'px';
+            rafter.style.height = '6px';
+            // fica ATRÁS da telha (translateZ negativo), já que na vida
+            // real o caibro é a estrutura por baixo — não fica visível por
+            // cima da cobertura
+            rafter.style.transform = 'translateZ(-3px)';
+            g.appendChild(rafter);
+          }
+        });
+      }
+
+      const label = document.createElement('div');
+      label.className = 'sectionlabel3d';
+      label.style.left = x3d+'px';
+      label.style.top = (y3d-18)+'px';
+      label.textContent = `${s.name} · ${s.w}×${s.h}m${pitch?` · ${pitch}° (cumeeira a ${s.ridgePos!=null?s.ridgePos:s.w/2}m)`:''}`;
+      scene3d.appendChild(label);
+
+      return pickGrp;
+    }
+
+    const anchorFrame = {}; // guarda o pickGrp/medidas de cada âncora, para as referencers usarem depois
+    anchors.forEach(s=>{
+      const {x3d, y3d, wpx, hpx} = slot[s.id];
+      const pickGrp = buildRoofGroup(s, x3d+sceneShiftX, y3d+sceneShiftY, wpx, hpx);
+      anchorFrame[s.id] = pickGrp;
+      // a âncora também tem seu próprio ajuste fino (overlay.dx/dy) pra
+      // encaixar a estrutura na foto dela mesma — igual ao 2D. Antes isso
+      // era ignorado aqui (offset sempre 0,0), por isso mexer na posição
+      // do Telhado A não tinha efeito nenhum na 3D.
+      const offX = (s.overlay.dx/scale2D)*scale;
+      const offY = (s.overlay.dy/scale2D)*scale;
+      renderRowsInto(s, pickGrp, offX, offY);
+    });
+
+    referencers.forEach(s=>{
+      const pickGrp = anchorFrame[s.roofImageRef];
+      const sl = refSlot[s.id];
+      if(!pickGrp || !sl) return; // âncora sem foto/inválida: não tem onde desenhar
+      // deslocamento fino (overlay.dx/dy) já convertido em refSlot, na
+      // mesma escala da âncora (0,0 = canto dela) — igual ao 2D
+      const anchorSlot = slot[s.roofImageRef];
+      const offX = sl.x3d - anchorSlot.x3d;
+      const offY = sl.y3d - anchorSlot.y3d;
+      renderRowsInto(s, pickGrp, offX, offY);
+    });
+
+    applyRotation();
+  }
+
+  // 3D drag-to-orbit
+  let orbiting = false, lastX=0, lastY=0;
+  stage3dWrap.addEventListener('pointerdown', e=>{
+    orbiting = true; lastX=e.clientX; lastY=e.clientY;
+    stage3dWrap.classList.add('grabbing');
+  });
+  window.addEventListener('pointermove', e=>{
+    if(!orbiting) return;
+    const dx = e.clientX-lastX, dy = e.clientY-lastY;
+    rotY += dx*0.3;
+    rotX -= dy*0.3;
+    lastX=e.clientX; lastY=e.clientY;
+    applyRotation();
+  });
+  window.addEventListener('pointerup', ()=>{ orbiting=false; stage3dWrap.classList.remove('grabbing'); });
+
+  document.getElementById('rotLeft').onclick = ()=>{ rotY -= 20; applyRotation(); };
+  document.getElementById('rotRight').onclick = ()=>{ rotY += 20; applyRotation(); };
+  document.getElementById('rotUp').onclick = ()=>{ rotX += 12; applyRotation(); };
+  document.getElementById('rotDown').onclick = ()=>{ rotX -= 12; applyRotation(); };
+  document.getElementById('zoomIn3d').onclick = ()=>{ zoom3d += 0.15; applyRotation(); };
+  document.getElementById('zoomOut3d').onclick = ()=>{ zoom3d -= 0.15; applyRotation(); };
+  document.getElementById('rotReset').onclick = ()=>{ rotX=-55; rotY=20; zoom3d=1; applyRotation(); };
+
+  // roda do mouse também dá zoom, sem precisar clicar nos botões
+  stage3dWrap.addEventListener('wheel', e=>{
+    e.preventDefault();
+    zoom3d += (e.deltaY < 0 ? 0.1 : -0.1);
+    applyRotation();
+  }, {passive:false});
+
+  // ---------- view toggle ----------
+  const btn2d = document.getElementById('btn2d'), btn3d = document.getElementById('btn3d');
+  const view2d = document.getElementById('view2d'), view3d = document.getElementById('view3d');
+  const stageHint = document.getElementById('stageHint');
+  btn2d.onclick = ()=>{
+    btn2d.classList.add('active'); btn3d.classList.remove('active');
+    view3d.classList.remove('active'); view2d.classList.remove('hidden');
+    stageHint.textContent = 'arraste uma placa para outra fileira para reorganizar';
+  };
+  btn3d.onclick = ()=>{
+    btn3d.classList.add('active'); btn2d.classList.remove('active');
+    view3d.classList.add('active'); view2d.classList.add('hidden');
+    stageHint.textContent = 'arraste para girar, ou use os botões abaixo';
+    render3D();
+  };
+
+  // ---------- BOM table ----------
+  const rows = [
+    ['rails', 'Trilhos', '#a8d19a'],
+    ['parafuso', 'Parafuso estrutural', '#c9702e'],
+    ['chapaL', 'Chapa L', '#f0a75b'],
+    ['emenda', 'Emenda', '#5eb6e8'],
+    ['intermediario', 'Grampo intermediário', '#ffbb55'],
+    ['final', 'Grampo final', '#ff6b52'],
+  ];
+  function renderBOM(){
+    const t = totals();
+    const table = document.getElementById('bomTable');
+    let html = `<tr><th>Item</th><th style="text-align:right;">Qtd.</th></tr>`;
+    rows.forEach(([key,label,color])=>{
+      html += `<tr><td><span class="swatch" style="background:${color}"></span>${label}</td><td class="qty">${t[key]}</td></tr>`;
+    });
+    html += `<tr class="total"><td>Total de placas</td><td class="qty">${t.panels}</td></tr>`;
+    table.innerHTML = html;
+  }
+
+  // ---------- master render ----------
+  function renderAll(){
+    renderSectionsList();
+    render2D();
+    if(view3d.classList.contains('active')) render3D();
+    renderBOM();
+  }
+
+  renderAll();
+})();
+</script>
+</body>
+</html>
